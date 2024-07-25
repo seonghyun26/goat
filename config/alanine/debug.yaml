@@ -8,7 +8,7 @@ wandb:
 
 logger:
   save_dir: log
-  save_freq: 1
+  save_freq: 2
 
 molecule:
   name: alanine
@@ -35,7 +35,7 @@ agent:
     prioritized_exp: 1
 
 training:
-  num_rollouts: 1000
+  num_rollouts: 10
   trains_per_rollout: 10
   batch_size: 16
   start_temperature: 600

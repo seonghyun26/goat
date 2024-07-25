@@ -167,8 +167,8 @@ class FlowNetAgent:
     def train(self, config):
         optimizer = torch.optim.Adam(
             [
-                {"params": [self.policy.log_z], "lr": config['training']['log_z_lr']},
-                {"params": self.policy.mlp.parameters(), "lr": config['training']['policy_lr']},
+                {"params": [self.policy.log_z], "lr": float(config['training']['log_z_lr'])},
+                {"params": self.policy.mlp.parameters(), "lr": float(config['training']['policy_lr'])},
             ]
         )
 
