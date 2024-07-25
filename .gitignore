@@ -1,6 +1,8 @@
+# Folders
+log/
 wandb/
-results/
-openmmforcefields/
+.vscode/
 **/__pycache__/
-.ipynb_checkpoints/
-model/
+# openmmforcefields/
+
+# Files

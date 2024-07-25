@@ -19,7 +19,7 @@ parser.add_argument("--molecule", default="alanine", type=str)
 # Logger Config
 parser.add_argument("--wandb", action="store_true")
 parser.add_argument("--project", default="alanine", type=str)
-parser.add_argument("--save_dir", default="results", type=str)
+parser.add_argument("--save_dir", default="log", type=str)
 parser.add_argument("--date", default="date", type=str, help="Date of the training")
 parser.add_argument(
     "--save_freq", default=100, type=int, help="Frequency of saving in  rollouts"
