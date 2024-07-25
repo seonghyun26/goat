@@ -1,0 +1,52 @@
+system:
+  type: train
+  device: cuda
+
+wandb:
+  use: True
+  project: goat
+
+logger:
+  save_dir: log
+  save_freq: 100
+
+molecule:
+  name: alanine
+  start_state: c5
+  end_state: c7ax
+
+dynamics:
+  temperature: 300.0
+  timestep: 1.0
+
+agent:
+  dim: [128, 256, 256, 256, 128]
+  num_samples: 16
+  num_steps: 1_000
+  reward: dist
+  heavy_atoms: True
+  sigma: 0.05
+  force: False
+  feat_aug: state
+  bias_scale: 0.01
+  scale: 1
+  buffer:
+    prioritized: False
+    size: 2048
+    prioritized_exp: 1
+
+training:
+  num_rollouts: 1000
+  trains_per_rollout: 2000
+  batch_size: 16
+  start_temperature: 600
+  end_temperature: 300
+  max_grad_norm: 1
+  log_z_lr: 1e-2
+  policy_lr: 1e-4
+  buffer_size: 20
+
+evaluate:
+  unbiased: True
+  policy: loss
+  num_samples: 16

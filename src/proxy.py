@@ -1,6 +1,7 @@
 import torch
-from torch import nn
 
+from torch import nn
+from collections import OrderedDict
 
 class Alanine(nn.Module):
     def __init__(self, config, md):
@@ -14,27 +15,22 @@ class Alanine(nn.Module):
             self.input_dim = md.num_particles * (3 + 1)
         elif config['agent']['feat_aug'] in ["rel_pos", "norm_rel_pos"]:
             self.input_dim = md.num_particles * (3 + 3)
+        elif config['agent']['feat_aug'] == "state":
+            self.input_dim = md.num_particles * (3 + 3)
         else:
             self.input_dim = md.num_particles * 3
-
         self.output_dim = md.num_particles * 3 if self.force else 1
 
-        self.mlp = nn.Sequential(
-            nn.Linear(self.input_dim, 128),
-            nn.ReLU(),
-            nn.Linear(128, 256),
-            nn.ReLU(),
-            nn.Linear(256, 256),
-            nn.ReLU(),
-            nn.Linear(256, 256),
-            nn.ReLU(),
-            nn.Linear(256, 128),
-            nn.ReLU(),
-            nn.Linear(128, self.output_dim, bias=False),
-        )
+        h_dim = [self.input_dim] + config['agent']['dim'] + [self.output_dim]
+        layers = []
+        for i in range(len(h_dim)-2):
+            layers.append(nn.Linear(h_dim[i], h_dim[i+1]))
+            layers.append(nn.ReLU())
+            if i == len(h_dim)-3:
+                layers.append(nn.Linear(h_dim[i+1], h_dim[i+2], bias=False))
+        self.mlp = nn.Sequential(*layers)
 
         self.log_z = nn.Parameter(torch.tensor(0.0))
-
         self.to(config['system']['device'])
 
     def forward(self, pos, target):
@@ -45,6 +41,11 @@ class Alanine(nn.Module):
             pos_ = torch.cat([pos, dist], dim=-1)
         elif self.feat_aug == "rel_pos":
             pos_ = torch.cat([pos, pos - target], dim=-1)
+        elif self.feat_aug == "state":
+            if len(pos.shape) == 3:
+                pos_ = torch.cat([pos, target.repeat(pos.shape[0], 1, 1)], dim=-1)
+            elif len(pos.shape) == 4:
+                pos_ = torch.cat([pos, target.repeat(pos.shape[0], 1, 1).unsqueeze(1)], dim=1)
         elif self.feat_aug == "norm_rel_pos":
             pos_ = torch.cat(
                 [pos, (pos - target) / torch.norm(pos - target, dim=-1, keepdim=True)],
