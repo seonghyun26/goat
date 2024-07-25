@@ -163,7 +163,7 @@ def plot_paths_alanine(save_dir, rollout, positions, target_position, last_idx):
     plt.xlabel("phi")
     plt.ylabel("psi")
     plt.show()
-    plt.savefig(f"{save_dir}/paths/{rollout}.png")
+    plt.savefig(f"{save_dir}/2D_plots/{rollout}.png")
     plt.close()
     return fig
 
@@ -202,7 +202,7 @@ def plot_paths_chignolin(save_dir, rollout, positions, last_idx):
     plt.xlabel("Asp3OD-Thr6OG")
     plt.ylabel("Asp3N-Thr8O")
     plt.show()
-    plt.savefig(f"{save_dir}/paths/{rollout}.png")
+    plt.savefig(f"{save_dir}/2D_plots/{rollout}.png")
     plt.close()
     return fig
 
@@ -217,7 +217,7 @@ def plot_potentials(save_dir, rollout, potentials, last_idx):
     plt.xlabel("Time (fs)")
     plt.ylabel("Potential Energy (kJ/mol)")
     plt.show()
-    plt.savefig(f"{save_dir}/potentials/{rollout}.png")
+    plt.savefig(f"{save_dir}/potentials/rollout_{rollout}.png")
     plt.close()
     return fig
 
@@ -244,7 +244,7 @@ def plot_efps(save_dir, rollout, efps, efp_idxs):
     return fig
 
 
-def plot_path_alanine(save_dir, positions, target_position, last_idx):
+def plot_2d_plot_alanine(save_dir, positions, target_position, last_idx):
     angle_1 = [6, 8, 14, 16]
     angle_2 = [1, 6, 8, 14]
 
@@ -312,11 +312,11 @@ def plot_path_alanine(save_dir, positions, target_position, last_idx):
         plt.xlabel("phi")
         plt.ylabel("psi")
         plt.show()
-        plt.savefig(f"{save_dir}/path/{i}.png")
+        plt.savefig(f"{save_dir}/2D_plots/path_{i}.png")
         plt.close()
 
 
-def plot_path_chignolin(save_dir, positions, last_idx):
+def plot_2d_plot_chignolin(save_dir, positions, last_idx):
     asp3od_thr6og, asp3n_thr8o = chignolin_h_bond(positions)
     asp3od_thr6og = asp3od_thr6og.detach().cpu().numpy()
     asp3n_thr8o = asp3n_thr8o.detach().cpu().numpy()
@@ -344,18 +344,18 @@ def plot_path_chignolin(save_dir, positions, last_idx):
         plt.xlabel("Asp3OD-Thr6OG")
         plt.ylabel("Asp3N-Thr8O")
         plt.show()
-        plt.savefig(f"{save_dir}/path/{i}.png")
+        plt.savefig(f"{save_dir}/2D_plots/{i}.png")
         plt.close()
 
 
-def plot_3D_view(save_dir, start_file, positions, potentials, last_idx):
+def plot_traj(save_dir, start_file, positions, potentials, last_idx):
     positions = positions.detach().cpu().numpy()
     for i in tqdm(range(positions.shape[0]), desc="Plot 3D views"):
         if last_idx[i] > 0:
             traj = md.load_pdb(start_file)
             for j in [0, potentials[i].argmax(), last_idx[i]]:
                 traj.xyz = positions[i, j]
-                traj.save(f"{save_dir}/3D_views/{i}_{j}.pdb")
+                traj.save(f"{save_dir}/traj/{i}_{j}.pdb")
 
             for j in range(last_idx[i] + 1):
                 traj.xyz = positions[i, j]
@@ -364,7 +364,7 @@ def plot_3D_view(save_dir, start_file, positions, potentials, last_idx):
                     trajs = traj
                 else:
                     trajs = trajs.join(traj)
-            trajs.save(f"{save_dir}/3D_views/{i}.h5")
+            trajs.save(f"{save_dir}/traj/{i}.h5")
 
 
 def plot_potential(save_dir, potentials, last_idx):
@@ -374,10 +374,15 @@ def plot_potential(save_dir, potentials, last_idx):
         if last_idx[i] > 0:
             plt.figure(figsize=(16, 2))
             pot = potentials[i][: last_idx[i] + 1]
-            np.save(f"{save_dir}/potential/{i}.npy", pot)
+            np.save(f"{save_dir}/potentials/{i}.npy", pot)
             plt.plot(pot)
             plt.xlabel("Time (fs)")
             plt.ylabel("Potential Energy (kJ/mol)")
             plt.show()
-            plt.savefig(f"{save_dir}/potential/{i}.png")
+            plt.savefig(f"{save_dir}/potentials/{i}.png")
             plt.close()
+
+def save_paths(save_dir, positions):
+    for idx, path in enumerate(positions):
+        np.save(f"{save_dir}/2D_plots/path_{idx}.npy", path.detach().cpu().numpy())
+    

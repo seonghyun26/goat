@@ -52,3 +52,22 @@ if __name__ == "__main__":
             torch.save(agent.policy.state_dict(), f"{logger.save_dir}/loss_policy.pt")
 
     logger.info("Finished training...!\n")
+    
+    # NOTE: Evaluate agent
+    logger.info(f"Evaluation...")
+    config = update_config_eval(config)
+    mds = MDs(config)
+    agent = FlowNetAgent(config, md, mds)
+    logger.set_eval_mode(config)
+    
+    if not config["evaluate"]["unbiased"]:
+        model_path = (os.path.join(
+            logger.save_dir,
+            f"{args.best}_policy.pt",
+        ))
+        agent.policy.load_state_dict(torch.load(model_path))
+
+    log = agent.sample(config, mds, config["dynamics"]["temperature"])
+    logger.log(agent.policy, 0, **log)
+    
+    logger.info("Finished evaluation..!\n")

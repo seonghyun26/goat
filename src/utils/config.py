@@ -156,3 +156,9 @@ def config_init(args):
         )
         
     return config
+
+def update_config_eval(config):
+    config["system"]["type"] = "eval"
+    config["agent"]["num_samples"] = config["evaluate"]["num_samples"]
+    
+    return config

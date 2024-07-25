@@ -21,9 +21,9 @@ dynamics:
 
 agent:
   num_samples: 4
-  num_steps: 10
+  num_steps: 100
   reward: dist
-  heavy_atoms: False
+  heavy_atoms: True
   sigma: 0.05
   force: False
   feat_aug: dist
@@ -35,7 +35,7 @@ agent:
     prioritized_exp: 1
 
 training:
-  num_rollouts: 10
+  num_rollouts: 4
   trains_per_rollout: 10
   batch_size: 16
   start_temperature: 600
@@ -44,6 +44,8 @@ training:
   log_z_lr: 1e-2
   policy_lr: 1e-4
   buffer_size: 20
-# evaluate:
-#   num_samples: 8
-#   unbiased: True
+
+evaluate:
+  unbiased: True
+  policy: loss
+  num_samples: 8

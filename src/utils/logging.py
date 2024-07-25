@@ -30,16 +30,15 @@ class Logger:
             config["logger"]["save_dir"],
             config["wandb"]["project"],
             config["system"]["date"],
+            str(config["system"]["seed"]),
             self.type,
-            str(config["system"]["seed"])
         )
         check_folders(self.save_dir, [
             "etps",
             "efps",
             "policies",
-            "paths",
             "potentials",
-            "3D_views"
+            "2D_plots"
         ])
 
         # Logger basic configurations
@@ -72,6 +71,24 @@ class Logger:
     def info(self, message):
         if self.logger:
             self.logger.info(message)
+            
+    def set_eval_mode(self, config):
+        self.type = "eval"
+        self.save_dir = os.path.join(
+            config["logger"]["save_dir"],
+            config["wandb"]["project"],
+            config["system"]["date"],
+            str(config["system"]["seed"]),
+            self.type,
+        )
+        if not os.path.exists(self.save_dir):
+            os.makedirs(self.save_dir)
+            
+        check_folders(self.save_dir, [
+            "potentials",
+            "traj",
+            "2D_plots"
+        ])
 
     def log(
         self,
@@ -203,7 +220,7 @@ class Logger:
             self.logger.info(f"std_at36: {std_at36}")
             self.logger.info(f"std_at38: {std_at38}")
 
-        if rollout % self.save_freq == 0:
+        if self.type == "train" and rollout % self.save_freq == 0:
             torch.save(policy.state_dict(), f"{self.save_dir}/policies/{rollout}.pt")
 
             if self.molecule == "alanine":
@@ -214,16 +231,15 @@ class Logger:
                 fig_path = plot_paths_chignolin(
                     self.save_dir, rollout, positions, last_idx
                 )
+            if self.molecule in ["alanine", "histidine", "chignolin"]:
+                fig_etp = plot_etps(self.save_dir, rollout, etps, etp_idxs)
+                fig_efp = plot_efps(self.save_dir, rollout, efps, efp_idxs)
 
             fig_pot = plot_potentials(self.save_dir, rollout, potentials, last_idx)
 
             if self.wandb:
                 log = {"potentials": wandb.Image(fig_pot)}
-
                 if self.molecule in ["alanine", "histidine", "chignolin"]:
-                    fig_etp = plot_etps(self.save_dir, rollout, etps, etp_idxs)
-                    fig_efp = plot_efps(self.save_dir, rollout, efps, efp_idxs)
-
                     cv_log = {
                         "paths": wandb.Image(fig_path),
                         "etps": wandb.Image(fig_etp),
@@ -233,12 +249,15 @@ class Logger:
 
                 wandb.log(log, step=rollout)
 
-        if self.type == "eval":
+        elif self.type == "eval":
+            save_paths(self.save_dir, positions)
+            
             if self.molecule == "alanine":
-                plot_path_alanine(self.save_dir, positions, target_position, last_idx)
+                plot_2d_plot_alanine(self.save_dir, positions, target_position, last_idx)
             elif self.molecule == "chignolin":
-                plot_path_chignolin(self.save_dir, positions, last_idx)
+                plot_2d_plot_chignolin(self.save_dir, positions, last_idx)
+            
             plot_potential(self.save_dir, potentials, last_idx)
-            plot_3D_view(
+            plot_traj(
                 self.save_dir, self.start_file, positions, potentials, last_idx
             )
