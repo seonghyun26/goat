@@ -63,8 +63,11 @@ class Logger:
         self.logger.addHandler(console_handler)
         self.logger.propagate = False
 
+        self.logger.info(f"<== Configurations ==>")
         for k, v in config.items():
             self.logger.info(f"{k}: {v}")
+        self.logger.info(f"<====================>\n")
+            
 
     def info(self, message):
         if self.logger:

@@ -15,25 +15,35 @@ molecule:
   start_state: c5
   end_state: c7ax
 
-path:
-  num_steps: 10
-  bias_scale: 0.01
-  scale: 1
-
 dynamics:
   temperature: 300.0
   timestep: 1.0
 
-training:
+agent:
   num_samples: 4
+  num_steps: 10
+  reward: dist
+  heavy_atoms: False
+  sigma: 0.05
+  force: False
+  feat_aug: dist
+  bias_scale: 0.01
+  scale: 1
+  buffer:
+    prioritized: False
+    size: 2048
+    prioritized_exp: 1
+
+training:
+  num_rollouts: 1000
   trains_per_rollout: 10
   batch_size: 16
-  feat_aug: dist
   start_temperature: 600
   end_temperature: 300
   max_grad_norm: 1
-  num_rollouts: 1000
   log_z_lr: 1e-2
   policy_lr: 1e-4
-  prioritized_exp: 1
   buffer_size: 20
+# evaluate:
+#   num_samples: 8
+#   unbiased: True

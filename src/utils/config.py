@@ -94,6 +94,51 @@ def parse_train_args():
     
     return args
 
+def parse_eval_args():
+    parser = argparse.ArgumentParser()
+
+    # System Config
+    parser.add_argument("--seed", default=0, type=int)
+    parser.add_argument("--type", default="eval", type=str)
+    parser.add_argument("--best", default="loss", type=str)
+    parser.add_argument("--device", default="cuda", type=str)
+    parser.add_argument("--molecule", default="alanine", type=str)
+
+    # Logger Config
+    parser.add_argument("--wandb", action="store_true")
+    parser.add_argument("--model_path", default="", type=str)
+    parser.add_argument("--project", default="alanine", type=str)
+    parser.add_argument("--save_dir", default="results", type=str)
+    parser.add_argument("--date", default="date", type=str, help="Date of the training")
+
+    # Policy Config
+    parser.add_argument("--force", action="store_true", help="Network predicts force")
+
+    # Sampling Config
+    parser.add_argument("--unbiased", action="store_true")
+    parser.add_argument("--start_state", default="c5", type=str)
+    parser.add_argument("--end_state", default="c7ax", type=str)
+    parser.add_argument("--num_steps", default=1000, type=int, help="Length of paths")
+    parser.add_argument("--feat_aug", default="dist", type=str)
+    parser.add_argument(
+        "--bias_scale", default=0.01, type=float, help="Scale factor of bias"
+    )
+    parser.add_argument("--scale", default=1, type=float)
+    parser.add_argument("--timestep", default=1, type=float, help="Timestep of integrator")
+    parser.add_argument(
+        "--sigma", default=0.05, type=float, help="Control reward of arrival"
+    )
+    parser.add_argument(
+        "--num_samples", default=64, type=int, help="Number of paths to sample"
+    )
+    parser.add_argument(
+        "--temperature", default=300, type=float, help="Temperature for evaluation"
+    )
+    parser.add_argument("--reward", default="dist", type=str)
+    parser.add_argument("--heavy_atoms", action="store_true")
+
+    args = parser.parse_args()
+
 def config_init(args):
     if args.config:
         with open(args.config, 'r') as f:

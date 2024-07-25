@@ -3,16 +3,16 @@ from torch import nn
 
 
 class Alanine(nn.Module):
-    def __init__(self, args, md):
+    def __init__(self, config, md):
         super().__init__()
 
-        self.force = args.force
-        self.feat_aug = args.feat_aug
+        self.force = config['agent']['force']
+        self.feat_aug = config['agent']['feat_aug']
 
         self.num_particles = md.num_particles
-        if args.feat_aug == "dist":
+        if config['agent']['feat_aug'] == "dist":
             self.input_dim = md.num_particles * (3 + 1)
-        elif args.feat_aug in ["rel_pos", "norm_rel_pos"]:
+        elif config['agent']['feat_aug'] in ["rel_pos", "norm_rel_pos"]:
             self.input_dim = md.num_particles * (3 + 3)
         else:
             self.input_dim = md.num_particles * 3
@@ -35,7 +35,7 @@ class Alanine(nn.Module):
 
         self.log_z = nn.Parameter(torch.tensor(0.0))
 
-        self.to(args.device)
+        self.to(config['system']['device'])
 
     def forward(self, pos, target):
         if not self.force:
@@ -66,16 +66,16 @@ class Alanine(nn.Module):
 
 
 class Chignolin(nn.Module):
-    def __init__(self, args, md):
+    def __init__(self, config, md):
         super().__init__()
 
-        self.force = args.force
-        self.feat_aug = args.feat_aug
+        self.force = config['agent']['force']
+        self.feat_aug = config['agent']['feat_aug']
 
         self.num_particles = md.num_particles
-        if args.feat_aug == "dist":
+        if config['agent']['feat_aug'] == "dist":
             self.input_dim = md.num_particles * (3 + 1)
-        elif args.feat_aug in ["rel_pos", "norm_rel_pos"]:
+        elif config['agent']['feat_aug'] in ["rel_pos", "norm_rel_pos"]:
             self.input_dim = md.num_particles * (3 + 3)
         else:
             self.input_dim = md.num_particles * 3
@@ -97,7 +97,7 @@ class Chignolin(nn.Module):
 
         self.log_z = nn.Parameter(torch.tensor(0.0))
 
-        self.to(args.device)
+        self.to(config['system']['device'])
 
     def forward(self, pos, target):
         if not self.force:
@@ -128,16 +128,16 @@ class Chignolin(nn.Module):
 
 
 class Poly(nn.Module):
-    def __init__(self, args, md):
+    def __init__(self, config, md):
         super().__init__()
 
-        self.force = args.force
-        self.feat_aug = args.feat_aug
+        self.force = config['agent']['force']
+        self.feat_aug = config['agent']['feat_aug']
 
         self.num_particles = md.num_particles
-        if args.feat_aug == "dist":
+        if config['agent']['feat_aug'] == "dist":
             self.input_dim = md.num_particles * (3 + 1)
-        elif args.feat_aug in ["rel_pos", "norm_rel_pos"]:
+        elif config['agent']['feat_aug'] in ["rel_pos", "norm_rel_pos"]:
             self.input_dim = md.num_particles * (3 + 3)
         else:
             self.input_dim = md.num_particles * 3
@@ -159,7 +159,7 @@ class Poly(nn.Module):
 
         self.log_z = nn.Parameter(torch.tensor(0.0))
 
-        self.to(args.device)
+        self.to(config['system']['device'])
 
     def forward(self, pos, target):
         if not self.force:
@@ -190,16 +190,16 @@ class Poly(nn.Module):
 
 
 class Histidine(nn.Module):
-    def __init__(self, args, md):
+    def __init__(self, config, md):
         super().__init__()
 
-        self.force = args.force
-        self.feat_aug = args.feat_aug
+        self.force = config['agent']['force']
+        self.feat_aug = config['agent']['feat_aug']
 
         self.num_particles = md.num_particles
-        if args.feat_aug == "dist":
+        if config['agent']['feat_aug'] == "dist":
             self.input_dim = md.num_particles * (3 + 1)
-        elif args.feat_aug in ["rel_pos", "norm_rel_pos"]:
+        elif config['agent']['feat_aug'] in ["rel_pos", "norm_rel_pos"]:
             self.input_dim = md.num_particles * (3 + 3)
         else:
             self.input_dim = md.num_particles * 3
@@ -221,7 +221,7 @@ class Histidine(nn.Module):
 
         self.log_z = nn.Parameter(torch.tensor(0.0))
 
-        self.to(args.device)
+        self.to(config['system']['device'])
 
     def forward(self, pos, target):
         if not self.force:

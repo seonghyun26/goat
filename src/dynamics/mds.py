@@ -9,7 +9,7 @@ class MDs:
         self.molecule = config['molecule']['name']
         self.start_state = config['molecule']['start_state']
         self.end_state = config['molecule']['end_state']
-        self.num_samples = config['training']['num_samples']
+        self.num_samples = config['agent']['num_samples']
 
         self.mds = self._init_mds(config)
         self.target_position = self._init_target_position(config)
@@ -22,8 +22,6 @@ class MDs:
         return mds
 
     def _init_target_position(self, config):
-        print(f"Get position of {self.end_state} of {self.molecule}")
-
         target_position = getattr(dynamics, self.molecule.title())(
             config, state=self.end_state
         ).position
