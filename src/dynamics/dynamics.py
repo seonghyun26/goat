@@ -10,8 +10,8 @@ current_dir = os.getcwd()
 
 
 class Alanine(BaseDynamics):
-    def __init__(self, args, state):
-        super().__init__(args, state)
+    def __init__(self, config, state):
+        super().__init__(config, state)
 
     def setup(self):
         forcefield = app.ForceField("amber99sbildn.xml", "tip3p.xml")
@@ -48,8 +48,8 @@ class Alanine(BaseDynamics):
 
 
 class Chignolin(BaseDynamics):
-    def __init__(self, args, state):
-        super().__init__(args, state)
+    def __init__(self, config, state):
+        super().__init__(config, state)
 
     def setup(self):
         path = os.path.join(
@@ -90,8 +90,8 @@ class Chignolin(BaseDynamics):
 
 
 class Poly(BaseDynamics):
-    def __init__(self, args, state):
-        super().__init__(args, state)
+    def __init__(self, config, state):
+        super().__init__(config, state)
 
     def setup(self):
         path = os.path.join(

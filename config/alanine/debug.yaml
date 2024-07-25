@@ -3,12 +3,12 @@ system:
   device: cuda
 
 wandb:
-  use: True
+  use: False
   project: goat
 
 logger:
   save_dir: log
-  save_freq: 100
+  save_freq: 1
 
 molecule:
   name: alanine
@@ -16,7 +16,7 @@ molecule:
   end_state: c7ax
 
 path:
-  num_steps: 1_000
+  num_steps: 10
   bias_scale: 0.01
   scale: 1
 
@@ -24,11 +24,9 @@ dynamics:
   temperature: 300.0
   timestep: 1.0
 
-sampling:
-  num_samples: 16
-
 training:
-  trains_per_rollout: 2000
+  num_samples: 4
+  trains_per_rollout: 10
   batch_size: 16
   feat_aug: dist
   start_temperature: 600
@@ -38,4 +36,4 @@ training:
   log_z_lr: 1e-2
   policy_lr: 1e-4
   prioritized_exp: 1
-  buffer_size: 2048
+  buffer_size: 20

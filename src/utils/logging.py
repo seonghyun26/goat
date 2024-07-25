@@ -8,52 +8,46 @@ from .plot import *
 from .metrics import Metric
 
 
-class Logger:
-    def __init__(self, args, md):
-        self.type = args.type
-        self.wandb = args.wandb
-        self.molecule = args.molecule
-        self.start_file = md.start_file
-        self.heavy_atoms = args.heavy_atoms
-        self.save_freq = args.save_freq if args.type == "train" else 1
+def check_folders(path, folders):
+    for folder in folders:
+        path_to_check = f"{path}/{folder}"
+        if not os.path.exists(path_to_check):
+            os.makedirs(path_to_check)
 
+class Logger:
+    def __init__(self, config, md):
+        self.wandb = config["wandb"]["use"]
+        self.type = config["system"]["type"]
+        self.molecule = config["molecule"]["name"]
+        self.start_file = md.start_file
+        
+        self.metric = Metric(config, md)
         self.best_epd = float("inf")
         self.best_elr = float("-inf")
-        self.metric = Metric(args, md)
 
-        if args.type == "eval":
-            self.save_dir = os.path.join(
-                args.save_dir,
-                args.project,
-                args.date,
-                args.type,
-                args.best,
-                str(args.seed),
-            )
-        else:
-            self.save_dir = os.path.join(
-                args.save_dir, args.project, args.date, args.type, str(args.seed)
-            )
-
-        for name in [
-            "paths",
-            "path",
-            "potentials",
-            "potential",
+        self.save_freq = config["logger"]["save_freq"]
+        self.save_dir = os.path.join(
+            config["logger"]["save_dir"],
+            config["wandb"]["project"],
+            config["system"]["date"],
+            self.type,
+            str(config["system"]["seed"])
+        )
+        check_folders(self.save_dir, [
             "etps",
             "efps",
             "policies",
-            "3D_views",
-        ]:
-            if not os.path.exists(f"{self.save_dir}/{name}"):
-                os.makedirs(f"{self.save_dir}/{name}")
+            "paths",
+            "potentials",
+            "3D_views"
+        ])
 
         # Logger basic configurations
         self.logger = logging.getLogger("tps")
         self.logger.setLevel(logging.INFO)
 
         # File handler
-        log_file = args.type + ".log"
+        log_file = self.type + ".log"
         log_file = os.path.join(self.save_dir, log_file)
         file_handler = logging.FileHandler(log_file, mode="w")
         file_handler.setLevel(logging.INFO)
@@ -69,7 +63,7 @@ class Logger:
         self.logger.addHandler(console_handler)
         self.logger.propagate = False
 
-        for k, v in vars(args).items():
+        for k, v in config.items():
             self.logger.info(f"{k}: {v}")
 
     def info(self, message):
@@ -105,9 +99,9 @@ class Logger:
         ermsd, std_rmsd = self.metric.rmsd(last_position, target_position)
         ll, std_ll = self.metric.log_likelihood(actions)
         epd, std_pd = self.metric.pairwise_distance(last_position, target_position)
-        elpd, std_lpd = self.metric.log_pairwise_distance(
-            last_position, target_position, self.heavy_atoms
-        )
+        # elpd, std_lpd = self.metric.log_pairwise_distance(
+        #     last_position, target_position, self.heavy_atoms
+        # )
         epcd, std_pcd = self.metric.pairwise_coulomb_distance(
             last_position, target_position
         )

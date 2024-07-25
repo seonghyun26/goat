@@ -1,6 +1,6 @@
 cd ../
 
-current_date=$(date +"%m%d-%H%M%S")
+current_date=$(TZ="Asia/Seoul" date +"%m%d-%H%M%S")
 
 for seed in 0; do
   CUDA_VISIBLE_DEVICES=6 python src/train.py \

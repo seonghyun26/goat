@@ -12,13 +12,13 @@ nuclear_charge = {
 
 
 class BaseDynamics(ABC):
-    def __init__(self, args, state):
+    def __init__(self, config, state):
         super().__init__()
-        self.start_file = f"./data/{args.molecule}/{state}.pdb"
+        self.start_file = f"./data/{config['molecule']['name']}/{state}.pdb"
 
-        self.temperature = args.temperature * unit.kelvin
+        self.temperature = config['dynamics']['temperature'] * unit.kelvin
         self.friction_coefficient = 1 / unit.picoseconds
-        self.timestep = args.timestep * unit.femtoseconds
+        self.timestep = config['dynamics']['timestep'] * unit.femtoseconds
 
         self.pdb, self.integrator, self.simulation, self.external_force = self.setup()
 
