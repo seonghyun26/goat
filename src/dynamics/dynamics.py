@@ -1,8 +1,9 @@
 import os
 import openmm as mm
-from openmm import app
 import openmm.unit as unit
 
+from openmm import *
+from openmm import app
 from .base import BaseDynamics
 from openmmtools.integrators import LangevinIntegrator
 
@@ -40,8 +41,16 @@ class Alanine(BaseDynamics):
         )
 
         integrator.setConstraintTolerance(0.00001)
+        platform = Platform.getPlatformByName('OpenCL')
+        properties = {'DeviceIndex': "0", 'Precision': 'double'}
 
-        simulation = app.Simulation(pdb.topology, system, integrator)
+        simulation = app.Simulation(
+            pdb.topology,
+            system,
+            integrator,
+            platform,
+            properties
+        )
         simulation.context.setPositions(pdb.positions)
 
         return pdb, integrator, simulation, external_force

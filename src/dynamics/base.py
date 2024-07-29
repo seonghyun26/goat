@@ -14,6 +14,7 @@ nuclear_charge = {
 class BaseDynamics(ABC):
     def __init__(self, config, state):
         super().__init__()
+        self.config = config
         self.start_file = f"./data/{config['molecule']['name']}/{state}.pdb"
 
         self.temperature = config['dynamics']['temperature'] * unit.kelvin

@@ -3,6 +3,75 @@ import torch
 from torch import nn
 from collections import OrderedDict
 
+class Proxy(nn.Module):
+    def __init__(self, config, md):
+        super().__init__()
+
+        self.config = config
+        self.force = config['agent']['force']
+        self.feat_aug = config['agent']['feat_aug']
+
+        self.num_particles = md.num_particles
+        if config['agent']['feat_aug'] == "dist":
+            self.input_dim = md.num_particles * (3 + 1)
+        elif config['agent']['feat_aug'] in ["rel_pos", "norm_rel_pos", "state"]:
+            self.input_dim = md.num_particles * (3 + 3)
+        else:
+            self.input_dim = md.num_particles * 3
+        self.output_dim = md.num_particles * 3 if self.force else 1
+
+        # Set up Model
+        if config['agent']['model']['type'].lower() == "mlp":
+            h_dim = config['agent']['model']['dim']
+            num_layer = config['agent']['model']['layer']
+            assert len(h_dim) == num_layer, f"Number of dimensions {len(h_dim)-2} and layers {num_layer} does not match"
+            
+            layers = [nn.Linear(self.input_dim, h_dim[0]), nn.ReLU()]
+            for i in range(num_layer-1):
+                layers.append(nn.Linear(h_dim[i], h_dim[i+1]))
+                layers.append(nn.ReLU())
+            layers.append(nn.Linear(h_dim[-1], h_dim[self.output_dim], bias=False))
+            
+            self.model = nn.Sequential(*layers)
+        else:
+            raise ValueError(f"Model {config['agent']['model']['type']} not implemented.")
+
+        self.log_z = nn.Parameter(torch.tensor(0.0))
+        self.to(config['system']['device'])
+
+    def forward(self, pos, target):
+        if not self.force:
+            pos.requires_grad = True
+            
+        if self.feat_aug == "dist":
+            dist = torch.norm(pos - target, dim=-1, keepdim=True)
+            pos_ = torch.cat([pos, dist], dim=-1)
+        elif self.feat_aug == "rel_pos":
+            pos_ = torch.cat([pos, pos - target], dim=-1)
+        elif self.feat_aug == "state":
+            if len(pos.shape) == 3:
+                pos_ = torch.cat([pos, target.repeat(pos.shape[0], 1, 1)], dim=-1)
+            elif len(pos.shape) == 4:
+                pos_ = torch.cat([pos, target.repeat(pos.shape[0], 1, 1).unsqueeze(1)], dim=1)
+        elif self.feat_aug == "norm_rel_pos":
+            pos_ = torch.cat(
+                [pos, (pos - target) / torch.norm(pos - target, dim=-1, keepdim=True)],
+                dim=-1,
+            )
+        else:
+            pos_ = pos
+
+        out = self.model(pos_.reshape(-1, self.input_dim))
+
+        if not self.force:
+            force = -torch.autograd.grad(
+                out.sum(), pos, create_graph=True, retain_graph=True
+            )[0]
+        else:
+            force = out.view(*pos.shape)
+
+        return force
+
 class Alanine(nn.Module):
     def __init__(self, config, md):
         super().__init__()

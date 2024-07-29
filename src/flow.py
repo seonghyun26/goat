@@ -1,7 +1,8 @@
 import torch
-import proxy
+# import proxy
 import openmm.unit as unit
 
+from proxy import Proxy
 from tqdm import tqdm
 from utils.utils import *
 from torch.distributions import Normal
@@ -22,7 +23,8 @@ class FlowNetAgent:
             dtype=torch.float,
             device=config['system']['device'],
         ).unsqueeze(-1)
-        self.policy = getattr(proxy, config['molecule']['name'].title())(config, md)
+        # self.policy = getattr(proxy, config['molecule']['name'].title())(config, md)
+        self.policy = Proxy(config, md)
         self.heavy_atom_ids = md.heavy_atom_ids
         self.normal = Normal(0, self.std)
 
@@ -168,7 +170,7 @@ class FlowNetAgent:
         optimizer = torch.optim.Adam(
             [
                 {"params": [self.policy.log_z], "lr": float(config['training']['log_z_lr'])},
-                {"params": self.policy.mlp.parameters(), "lr": float(config['training']['policy_lr'])},
+                {"params": self.policy.model.parameters(), "lr": float(config['training']['policy_lr'])},
             ]
         )
 

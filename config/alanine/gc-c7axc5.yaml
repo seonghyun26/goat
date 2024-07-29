@@ -24,7 +24,7 @@ agent:
   num_samples: 16
   num_steps: 1_000
   reward: dist
-  heavy_atoms: True
+  heavy_atoms: False
   sigma: 0.05
   force: False
   feat_aug: state

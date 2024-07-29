@@ -68,6 +68,6 @@ if __name__ == "__main__":
         agent.policy.load_state_dict(torch.load(model_path))
 
     log = agent.sample(config, mds, config["dynamics"]["temperature"])
-    logger.log(agent.policy, 0, **log)
+    logger.log(agent.policy, config['training']['num_rollouts'], **log)
     
     logger.info("Finished evaluation..!\n")
