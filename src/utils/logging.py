@@ -2,6 +2,7 @@ import os
 import sys
 import wandb
 import torch
+import pprint
 import logging
 
 from .plot import *
@@ -20,7 +21,7 @@ class Logger:
         self.type = config["system"]["type"]
         self.molecule = config["molecule"]["name"]
         self.start_file = md.start_file
-        
+        self.heavy_atoms = config["agent"]["heavy_atoms"]
         self.metric = Metric(config, md)
         self.best_epd = float("inf")
         self.best_elr = float("-inf")
@@ -119,9 +120,9 @@ class Logger:
         ermsd, std_rmsd = self.metric.rmsd(last_position, target_position)
         ll, std_ll = self.metric.log_likelihood(actions)
         epd, std_pd = self.metric.pairwise_distance(last_position, target_position)
-        # elpd, std_lpd = self.metric.log_pairwise_distance(
-        #     last_position, target_position, self.heavy_atoms
-        # )
+        elpd, std_lpd = self.metric.log_pairwise_distance(
+            last_position, target_position, self.heavy_atoms
+        )
         epcd, std_pcd = self.metric.pairwise_coulomb_distance(
             last_position, target_position
         )
@@ -132,126 +133,89 @@ class Logger:
         log_reward = log_md_reward + log_target_reward
         elr, std_lr = log_reward.mean().item(), log_reward.std().item()
 
-        # Log
+        log = {
+            "log_z": policy.log_z.item(),
+            "ll": ll,
+            "epd": epd,
+            "elpd": elpd,
+            "epcd": epcd,
+            "elr": elr,
+            "elmr": elmr,
+            "eltr": eltr,
+            "ermsd": ermsd,
+            "len": len,
+            "std_ll": std_ll,
+            "std_pd": std_pd,
+            "std_lpd": std_lpd,
+            "std_pcd": std_pcd,
+            "std_lr": std_lr,
+            "std_lmr": std_lmr,
+            "std_ltr": std_ltr,
+            "std_rmsd": std_rmsd,
+            "std_len": std_len,
+        }
+        
+        # Logger print in stdout
+        if self.molecule in ["alanine", "histidine", "chignolin"]:
+            log.update({
+                "thp": thp,
+                "etp": etp,
+                "efp": efp,
+                "std_etp": std_etp,
+                "std_efp": std_efp,
+            })
+        elif self.molecule == "chignolin":
+            log.update({
+                "eat36": eat36,
+                "eat38": eat38,
+                "std_at36": std_at36,
+                "std_at38": std_at38,
+            })
+        self.logger.info(log)
+
+        # Training
         if self.type == "train":
-            self.logger.info(
-                "-----------------------------------------------------------"
-            )
             self.logger.info(f"Rollout: {rollout}")
+            
+            # Save best policies
             if epd < self.best_epd:
                 self.best_epd = epd
                 torch.save(policy.state_dict(), f"{self.save_dir}/epd_policy.pt")
             if elr > self.best_elr:
                 self.best_elr = elr
                 torch.save(policy.state_dict(), f"{self.save_dir}/elr_policy.pt")
-
-        if self.wandb:
-            log = {
-                "log_z": policy.log_z.item(),
-                "ll": ll,
-                "epd": epd,
-                # "elpd": elpd,
-                "epcd": epcd,
-                "elr": elr,
-                "elmr": elmr,
-                "eltr": eltr,
-                "ermsd": ermsd,
-                "len": len,
-                "std_ll": std_ll,
-                "std_pd": std_pd,
-                # "std_lpd": std_lpd,
-                "std_pcd": std_pcd,
-                "std_lr": std_lr,
-                "std_lmr": std_lmr,
-                "std_ltr": std_ltr,
-                "std_rmsd": std_rmsd,
-                "std_len": std_len,
-            }
-
-            if self.molecule in ["alanine", "histidine", "chignolin"]:
-                cv_log = {
-                    "thp": thp,
-                    "etp": etp,
-                    "efp": efp,
-                    "std_etp": std_etp,
-                    "std_efp": std_efp,
-                }
-                log.update(cv_log)
-            elif self.molecule == "chignolin":
-                cv_log = {
-                    "eat36": eat36,
-                    "eat38": eat38,
-                    "std_at36": std_at36,
-                    "std_at38": std_at38,
-                }
-                log.update(cv_log)
-
-            wandb.log(log, step=rollout)
-
-        self.logger.info(f"log_z: {policy.log_z.item()}")
-        self.logger.info(f"ll: {ll}")
-        self.logger.info(f"epd: {epd}")
-        # self.logger.info(f"elpd: {elpd}")
-        self.logger.info(f"epcd: {epcd}")
-        self.logger.info(f"elr: {elr}")
-        self.logger.info(f"elmr: {elmr}")
-        self.logger.info(f"eltr: {eltr}")
-        self.logger.info(f"ermsd: {ermsd}")
-        self.logger.info(f"len: {len}")
-        self.logger.info(f"std_ll: {std_ll}")
-        self.logger.info(f"std_pd: {std_pd}")
-        # self.logger.info(f"std_lpd: {std_lpd}")
-        self.logger.info(f"std_pcd: {std_pcd}")
-        self.logger.info(f"std_lr: {std_lr}")
-        self.logger.info(f"std_lmr: {std_lmr}")
-        self.logger.info(f"std_ltr: {std_ltr}")
-        self.logger.info(f"std_rmsd: {std_rmsd}")
-        self.logger.info(f"std_len: {std_len}")
-
-        if self.molecule in ["alanine", "histidine", "chignolin"]:
-            self.logger.info(f"thp: {thp}")
-            self.logger.info(f"etp: {etp}")
-            self.logger.info(f"efp: {efp}")
-            self.logger.info(f"std_etp: {std_etp}")
-            self.logger.info(f"std_efp: {std_efp}")
-        elif self.molecule == "chignolin":
-            self.logger.info(f"eat36: {eat36}")
-            self.logger.info(f"eat38: {eat38}")
-            self.logger.info(f"std_at36: {std_at36}")
-            self.logger.info(f"std_at38: {std_at38}")
-
-        if self.type == "train" and rollout % self.save_freq == 0:
-            torch.save(policy.state_dict(), f"{self.save_dir}/policies/{rollout}.pt")
-
-            if self.molecule == "alanine":
-                fig_path = plot_paths_alanine(
-                    self.save_dir, rollout, positions, target_position, last_idx
-                )
-            elif self.molecule == "chignolin":
-                fig_path = plot_paths_chignolin(
-                    self.save_dir, rollout, positions, last_idx
-                )
-            if self.molecule in ["alanine", "histidine", "chignolin"]:
-                fig_etp = plot_etps(self.save_dir, rollout, etps, etp_idxs)
-                fig_efp = plot_efps(self.save_dir, rollout, efps, efp_idxs)
-
-            fig_pot = plot_potentials(self.save_dir, rollout, potentials, last_idx)
-
-            if self.wandb:
-                log = {"potentials": wandb.Image(fig_pot)}
-                if self.molecule in ["alanine", "histidine", "chignolin"]:
-                    cv_log = {
-                        "paths": wandb.Image(fig_path),
-                        "etps": wandb.Image(fig_etp),
-                        "efps": wandb.Image(fig_efp),
-                    }
-                    log.update(cv_log)
-
-                wandb.log(log, step=rollout)
-
-        elif self.type == "eval":
-            save_paths(self.save_dir, positions)
             
+            # Save information at each frequency
+            if rollout % self.save_freq == 0:
+                torch.save(policy.state_dict(), f"{self.save_dir}/policies/{rollout}.pt")
+                fig_pot = plot_potentials(self.save_dir, rollout, potentials, last_idx)
+
+                if self.molecule == "alanine":
+                    fig_path = plot_paths_alanine(
+                        self.save_dir, rollout, positions, target_position, last_idx
+                    )
+                elif self.molecule == "chignolin":
+                    fig_path = plot_paths_chignolin(
+                        self.save_dir, rollout, positions, last_idx
+                    )
+                if self.molecule in ["alanine", "histidine", "chignolin"]:
+                    fig_etp = plot_etps(self.save_dir, rollout, etps, etp_idxs)
+                    fig_efp = plot_efps(self.save_dir, rollout, efps, efp_idxs)
+
+                if self.wandb:
+                    log.update({"potentials": wandb.Image(fig_pot)})
+                    if self.molecule in ["alanine", "histidine", "chignolin"]:
+                        cv_log = {
+                            "paths": wandb.Image(fig_path),
+                            "etps": wandb.Image(fig_etp),
+                            "efps": wandb.Image(fig_efp),
+                        }
+                        log.update(cv_log)               
+            
+        # Evaluation
+        elif self.type == "eval":
+            self.logger.info(f"Evaluation on training for {rollout} rollout")
+            save_paths(self.save_dir, positions)
             if self.molecule == "alanine":
                 plot_2d_plot_alanine(self.save_dir, positions, target_position, last_idx)
             elif self.molecule == "chignolin":
@@ -261,3 +225,7 @@ class Logger:
             plot_traj(
                 self.save_dir, self.start_file, positions, potentials, last_idx
             )
+        
+        # Wandb
+        if self.wandb:
+                wandb.log(log, step=rollout)

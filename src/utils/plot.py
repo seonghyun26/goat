@@ -12,7 +12,7 @@ class AlaninePotential:
         self.open_file()
 
     def open_file(self):
-        file = "./src/utils/alanine.dat"
+        file = "./data/alanine.dat"
 
         with open(file) as f:
             lines = f.readlines()
@@ -59,7 +59,7 @@ class HistidinePotential:  # TODO: Make histidine.dat for 4 torsion angles
         self.open_file()
 
     def open_file(self):
-        file = "./src/utils/histidine.dat"
+        file = "./data/histidine.dat"
 
         with open(file) as f:
             lines = f.readlines()
