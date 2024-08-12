@@ -1,27 +1,20 @@
 # [Collective Variable Free Transition Path Sampling with Generative Flow Networks](https://arxiv.org/abs/2405.19961v2)
 
-## Installation
+## Environment settings
 
-1. First, create a new Conda environment:
-    ```
-    conda create -n tps-gfn python=3.9
-    ```
+This code runs on version python version: 3.9
 
-2. Activate the newly created environment:
-    ```
-    conda activate tps-gfn
-    ```
+Install the followings:
 
-4. Install the openmmtools for Molecular Dynamics (MD) simulation using the following commands:
+- Openmmtools for Molecular Dynamics (MD) simulation 
     ```
     conda install -c conda-forge openmmtools
     ```
-
-5. Install the openmmforcefields for forcefields of large proteins using the following commands:
+- Openmmforcefields for forcefields of large proteins
     ```
     git clone https://github.com/openmm/openmmforcefields.git
     ```
-6. Install another packages using the following commands:
+- Other packages
     ```
     pip install torch tqdm wandb mdtraj matplotlib
     ```
@@ -43,9 +36,4 @@
 - **Table**: Run the following command to reproduce the table:
     ```
     bash scripts/reproduce_table.sh
-    ```
-
-- **Visualization**: Run the following command to reproduce the figure:
-    ```
-    bash scripts/reproduce_figure.sh
     ```
