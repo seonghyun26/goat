@@ -4,28 +4,28 @@ from dynamics import dynamics
 
 
 class MDs:
-    def __init__(self, args):
-        self.device = args.device
-        self.molecule = args.molecule
-        self.end_state = args.end_state
-        self.num_samples = args.num_samples
-        self.start_state = args.start_state
+    def __init__(self, config):
+        self.device = config['system']['device']
+        self.molecule = config['molecule']['name']
+        self.start_state = config['molecule']['start_state']
+        self.end_state = config['molecule']['end_state']
+        self.num_samples = config['agent']['num_samples']
 
-        self.mds = self._init_mds(args)
-        self.target_position = self._init_target_position(args)
+        self.mds = self._init_mds(config)
+        self.target_position = self._init_target_position(config)
 
-    def _init_mds(self, args):
+    def _init_mds(self, config):
         mds = []
-        for _ in tqdm(range(self.num_samples)):
-            md = getattr(dynamics, self.molecule.title())(args, self.start_state)
+        for _ in tqdm(range(self.num_samples), desc="MDs initialization"):
+            md = getattr(dynamics, self.molecule.title())(config, self.start_state)
             mds.append(md)
         return mds
 
-    def _init_target_position(self, args):
+    def _init_target_position(self, config):
         print(f"Get position of {self.end_state} of {self.molecule}")
 
         target_position = getattr(dynamics, self.molecule.title())(
-            args, self.end_state
+            config, state=self.end_state
         ).position
         target_position = torch.tensor(
             target_position, dtype=torch.float, device=self.device

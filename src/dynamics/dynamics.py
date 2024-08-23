@@ -10,8 +10,8 @@ current_dir = os.getcwd()
 
 
 class Alanine(BaseDynamics):
-    def __init__(self, args, state):
-        super().__init__(args, state)
+    def __init__(self, config, state):
+        super().__init__(config, state)
 
     def setup(self):
         forcefield = app.ForceField("amber99sbildn.xml", "tip3p.xml")
@@ -41,92 +41,96 @@ class Alanine(BaseDynamics):
 
         integrator.setConstraintTolerance(0.00001)
 
-        simulation = app.Simulation(pdb.topology, system, integrator)
-        simulation.context.setPositions(pdb.positions)
-
-        return pdb, integrator, simulation, external_force
-
-
-class Chignolin(BaseDynamics):
-    def __init__(self, args, state):
-        super().__init__(args, state)
-
-    def setup(self):
-        path = os.path.join(
-            current_dir,
-            "openmmforcefields/openmmforcefields/ffxml/amber/protein.ff14SBonlysc.xml",
-        )
-        forcefield = app.ForceField(path, "implicit/gbn2.xml")
-        pdb = app.PDBFile(self.start_file)
-        system = forcefield.createSystem(
+        simulation = app.Simulation(
             pdb.topology,
-            nonbondedMethod=app.NoCutoff,
-            nonbondedCutoff=1.0 * unit.nanometers,
-            constraints=app.HBonds,
-            ewaldErrorTolerance=0.0005,
+            system,
+            integrator
         )
-        external_force = mm.CustomExternalForce("fx*x+fy*y+fz*z")
-
-        # creating the parameters
-        external_force.addPerParticleParameter("fx")
-        external_force.addPerParticleParameter("fy")
-        external_force.addPerParticleParameter("fz")
-        system.addForce(external_force)
-        for i in range(len(pdb.positions)):
-            external_force.addParticle(i, [0, 0, 0])
-
-        integrator = LangevinIntegrator(
-            self.temperature,
-            self.friction_coefficient,
-            self.timestep,
-        )
-
-        integrator.setConstraintTolerance(0.00001)
-
-        simulation = app.Simulation(pdb.topology, system, integrator)
         simulation.context.setPositions(pdb.positions)
 
         return pdb, integrator, simulation, external_force
 
 
-class Poly(BaseDynamics):
-    def __init__(self, args, state):
-        super().__init__(args, state)
+# class Chignolin(BaseDynamics):
+#     def __init__(self, args, state):
+#         super().__init__(args, state)
 
-    def setup(self):
-        path = os.path.join(
-            current_dir,
-            "openmmforcefields/openmmforcefields/ffxml/amber/protein.ff14SBonlysc.xml",
-        )
-        forcefield = app.ForceField(path, "implicit/gbn2.xml")
-        pdb = app.PDBFile(self.start_file)
-        system = forcefield.createSystem(
-            pdb.topology,
-            nonbondedMethod=app.NoCutoff,
-            nonbondedCutoff=1.0 * unit.nanometers,
-            constraints=app.HBonds,
-            rigidWater=True,
-            ewaldErrorTolerance=0.0005,
-        )
-        external_force = mm.CustomExternalForce("fx*x+fy*y+fz*z")
+#     def setup(self):
+#         path = os.path.join(
+#             current_dir,
+#             "openmmforcefields/openmmforcefields/ffxml/amber/protein.ff14SBonlysc.xml",
+#         )
+#         forcefield = app.ForceField(path, "implicit/gbn2.xml")
+#         pdb = app.PDBFile(self.start_file)
+#         system = forcefield.createSystem(
+#             pdb.topology,
+#             nonbondedMethod=app.NoCutoff,
+#             nonbondedCutoff=1.0 * unit.nanometers,
+#             constraints=app.HBonds,
+#             ewaldErrorTolerance=0.0005,
+#         )
+#         external_force = mm.CustomExternalForce("fx*x+fy*y+fz*z")
 
-        # creating the parameters
-        external_force.addPerParticleParameter("fx")
-        external_force.addPerParticleParameter("fy")
-        external_force.addPerParticleParameter("fz")
-        system.addForce(external_force)
-        for i in range(len(pdb.positions)):
-            external_force.addParticle(i, [0, 0, 0])
+#         # creating the parameters
+#         external_force.addPerParticleParameter("fx")
+#         external_force.addPerParticleParameter("fy")
+#         external_force.addPerParticleParameter("fz")
+#         system.addForce(external_force)
+#         for i in range(len(pdb.positions)):
+#             external_force.addParticle(i, [0, 0, 0])
 
-        integrator = LangevinIntegrator(
-            self.temperature,
-            self.friction_coefficient,
-            self.timestep,
-        )
+#         integrator = LangevinIntegrator(
+#             self.temperature,
+#             self.friction_coefficient,
+#             self.timestep,
+#         )
 
-        integrator.setConstraintTolerance(0.00001)
+#         integrator.setConstraintTolerance(0.00001)
 
-        simulation = app.Simulation(pdb.topology, system, integrator)
-        simulation.context.setPositions(pdb.positions)
+#         simulation = app.Simulation(pdb.topology, system, integrator)
+#         simulation.context.setPositions(pdb.positions)
 
-        return pdb, integrator, simulation, external_force
+#         return pdb, integrator, simulation, external_force
+
+
+# class Poly(BaseDynamics):
+#     def __init__(self, args, state):
+#         super().__init__(args, state)
+
+#     def setup(self):
+#         path = os.path.join(
+#             current_dir,
+#             "openmmforcefields/openmmforcefields/ffxml/amber/protein.ff14SBonlysc.xml",
+#         )
+#         forcefield = app.ForceField(path, "implicit/gbn2.xml")
+#         pdb = app.PDBFile(self.start_file)
+#         system = forcefield.createSystem(
+#             pdb.topology,
+#             nonbondedMethod=app.NoCutoff,
+#             nonbondedCutoff=1.0 * unit.nanometers,
+#             constraints=app.HBonds,
+#             rigidWater=True,
+#             ewaldErrorTolerance=0.0005,
+#         )
+#         external_force = mm.CustomExternalForce("fx*x+fy*y+fz*z")
+
+#         # creating the parameters
+#         external_force.addPerParticleParameter("fx")
+#         external_force.addPerParticleParameter("fy")
+#         external_force.addPerParticleParameter("fz")
+#         system.addForce(external_force)
+#         for i in range(len(pdb.positions)):
+#             external_force.addParticle(i, [0, 0, 0])
+
+#         integrator = LangevinIntegrator(
+#             self.temperature,
+#             self.friction_coefficient,
+#             self.timestep,
+#         )
+
+#         integrator.setConstraintTolerance(0.00001)
+
+#         simulation = app.Simulation(pdb.topology, system, integrator)
+#         simulation.context.setPositions(pdb.positions)
+
+#         return pdb, integrator, simulation, external_force

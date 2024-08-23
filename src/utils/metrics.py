@@ -5,36 +5,37 @@ from torch.distributions import Normal
 
 
 class Metric:
-    def __init__(self, args, md):
+    def __init__(self, config, md):
+        device = config["system"]["device"]
         self.num_particles = md.num_particles
-        self.eye = torch.eye(self.num_particles, device=args.device).unsqueeze(0)
+        self.eye = torch.eye(self.num_particles, device=device).unsqueeze(0)
         self.charge_matrix = torch.tensor(
-            md.charge_matrix, dtype=torch.float, device=args.device
+            md.charge_matrix, dtype=torch.float, device=device
         ).unsqueeze(0)
         self.std = torch.tensor(
             md.std.value_in_unit(unit.nanometer / unit.femtosecond),
             dtype=torch.float,
-            device=args.device,
+            device=device,
         )
 
-        self.molecule = args.molecule
+        self.molecule = config['molecule']['name']
         self.heavy_atom_ids = md.heavy_atom_ids
 
         self.normal = Normal(0, self.std)
 
-        if args.molecule == "alanine":
+        if config['molecule']['name'] == "alanine":
             self.angle_2 = torch.tensor(
-                [1, 6, 8, 14], dtype=torch.long, device=args.device
+                [1, 6, 8, 14], dtype=torch.long, device=device
             )
             self.angle_1 = torch.tensor(
-                [6, 8, 14, 16], dtype=torch.long, device=args.device
+                [6, 8, 14, 16], dtype=torch.long, device=device
             )
-        elif args.molecule == "histidine":
+        elif config['molecule']['name'] == "histidine":
             self.angle_2 = torch.tensor(
-                [0, 6, 8, 11], dtype=torch.long, device=args.device
+                [0, 6, 8, 11], dtype=torch.long, device=device
             )
             self.angle_1 = torch.tensor(
-                [6, 8, 11, 23], dtype=torch.long, device=args.device
+                [6, 8, 11, 23], dtype=torch.long, device=device
             )
 
     def rmsd(self, last_position, target_position):

@@ -7,44 +7,54 @@ from torch.distributions import Normal
 
 
 class FlowNetAgent:
-    def __init__(self, args, md, mds):
+    def __init__(self, config, md, mds):
         self.a = md.a
         self.num_particles = md.num_particles
         self.std = torch.tensor(
             md.std.value_in_unit(unit.nanometer / unit.femtosecond),
             dtype=torch.float,
-            device=args.device,
+            device=config['system']['device'],
         )
         self.m = torch.tensor(
             md.m.value_in_unit(md.m.unit),
             dtype=torch.float,
-            device=args.device,
+            device=config['system']['device'],
         ).unsqueeze(-1)
-        self.policy = getattr(proxy, args.molecule.title())(args, md)
+        self.policy = getattr(proxy, config['molecule']['name'].title())(config, md)
         self.heavy_atom_ids = md.heavy_atom_ids
         self.normal = Normal(0, self.std)
 
         position = mds.report()[0]
         self.target_position = kabsch(mds.target_position, position[:1])
+        
+        self.scale = config['agent']['scale']
+        self.bias_scale = config['agent']['bias_scale']
+        self.max_grad_norm = config['training']['max_grad_norm']
 
-        if args.type == "train":
-            self.replay = ReplayBuffer(args, md)
+        self.type = config['system']['type']
+        if self.type == "train":
+            self.replay = ReplayBuffer(config, md)
 
-    def sample(self, args, mds, temperature):
+    def sample(self, config, mds, temperature):
+        num_samples = config['agent']['num_samples']
+        num_steps = config['agent']['num_steps']
+        time_step = config['dynamics']['timestep']
+        device = config['system']['device']
+        
         positions = torch.zeros(
-            (args.num_samples, args.num_steps + 1, self.num_particles, 3),
-            device=args.device,
+            (num_samples, num_steps + 1, self.num_particles, 3),
+            device=device,
         )
         velocities = torch.zeros(
-            (args.num_samples, args.num_steps + 1, self.num_particles, 3),
-            device=args.device,
+            (num_samples, num_steps + 1, self.num_particles, 3),
+            device=device,
         )
         actions = torch.zeros(
-            (args.num_samples, args.num_steps, self.num_particles, 3),
-            device=args.device,
+            (num_samples, num_steps, self.num_particles, 3),
+            device=device,
         )
         potentials = torch.zeros(
-            (args.num_samples, args.num_steps + 1), device=args.device
+            (num_samples, num_steps + 1), device=device
         )
 
         position, velocity, _, potential = mds.report()
@@ -54,14 +64,14 @@ class FlowNetAgent:
         potentials[:, 0] = potential
 
         mds.set_temperature(temperature)
-        for s in tqdm(range(args.num_steps), desc="Sampling"):
-            if args.type == "eval" and args.unbiased:
+        for s in tqdm(range(num_steps), desc="Sampling"):
+            if self.type == "eval" and config['evaluate']['unbiased']:
                 bias = torch.zeros(
-                    (args.num_samples, self.num_particles, 3), device=args.device
+                    (num_samples, self.num_particles, 3), device=device
                 )
             else:
                 bias = (
-                    args.bias_scale
+                    self.bias_scale
                     * self.policy(position.detach(), self.target_position)
                     .squeeze()
                     .detach()
@@ -70,21 +80,11 @@ class FlowNetAgent:
 
             next_position, velocity, force, potential = mds.report()
 
-            # noise = (next_position - position) / args.timestep - self.a * (
-            #     velocity + force / self.m
-            # )
-
             noise = (
                 velocity
-                + self.a * args.timestep * force / self.m
-                - self.a * (next_position - position) / args.timestep
+                + self.a * time_step * force / self.m
+                - self.a * (next_position - position) / time_step
             )
-
-            # noise = (
-            #     velocity
-            #     - self.a * (next_position - position) / args.timestep
-            #     - self.a * args.timestep * force / self.m
-            # )
 
             positions[:, s + 1] = next_position
             potentials[:, s + 1] = potential - (bias * next_position).sum(
@@ -93,64 +93,22 @@ class FlowNetAgent:
 
             position = next_position
             bias = 1e-6 * bias  # kJ/(mol*nm) -> (da*nm)/fs**2
-            action = self.a * args.timestep * -bias / self.m + noise
+            action = self.a * time_step * -bias / self.m + noise
 
             actions[:, s] = action
         mds.reset()
 
         log_md_reward = self.normal.log_prob(actions).mean((1, 2, 3))
-
-        if args.reward == "kabsch":
-            log_target_reward = torch.zeros(
-                args.num_samples, args.num_steps, device=args.device
-            )
-            for i in range(args.num_samples):
-                aligned_target_position = kabsch(self.target_position, positions[i][1:])
-                target_velocity = (
-                    aligned_target_position - positions[i][:-1]
-                ) / args.timestep
-                log_target_reward[i] = -0.5 * torch.square(
-                    (target_velocity - velocities[i][1:]) / args.sigma
-                ).mean((1, 2))
-        elif args.reward == "dist":
-            target_pd = pairwise_dist(self.target_position)
-
-            log_target_reward = torch.zeros(
-                args.num_samples, args.num_steps + 1, device=args.device
-            )
-            for i in range(args.num_samples):
-                pd = pairwise_dist(positions[i])
-                log_target_reward[i] = -0.5 * torch.square(
-                    (pd - target_pd) / args.sigma
-                ).mean((1, 2))
-        elif args.reward == "s_dist":
-            log_target_reward = torch.zeros(
-                args.num_samples, args.num_steps + 1, device=args.device
-            )
-            for i in range(args.num_samples):
-                if args.heavy_atoms:
-                    log_target_reward[i] = -(
-                        compute_s_dist(
-                            positions[i][:, self.heavy_atom_ids],
-                            self.target_position[:, self.heavy_atom_ids],
-                        )
-                        / args.sigma
-                    )
-                else:
-                    log_target_reward[i] = -(
-                        compute_s_dist(positions[i], self.target_position) / args.sigma
-                    )
-
+        log_target_reward = self.calculate_target_reward(config, positions, velocities)
         log_target_reward, last_idx = log_target_reward.max(1)
-
         log_reward = log_md_reward + log_target_reward
 
-        if args.type == "train":
+        if self.type == "train":
             self.replay.add((positions, actions, log_reward))
-        if args.type == "eval" and args.unbiased:
+        if self.type == "eval" and config['evaluate']['unbiased']:
             last_idx = (
-                torch.zeros(args.num_samples, dtype=torch.long, device=args.device)
-                + args.num_steps
+                torch.zeros(num_samples, dtype=torch.long, device=device)
+                + num_steps
             )
 
         log = {
@@ -161,60 +119,112 @@ class FlowNetAgent:
             "log_md_reward": log_md_reward,
             "log_target_reward": log_target_reward,
             "target_position": self.target_position,
-            "last_position": positions[torch.arange(args.num_samples), last_idx],
+            "last_position": positions[torch.arange(num_samples), last_idx],
         }
         return log
 
-    def train(self, args):
+    def calculate_target_reward(self, config, positions, velocities):
+        num_samples = config['agent']['num_samples']
+        num_steps = config['agent']['num_steps']
+        reward_type = config['agent']['reward']
+        heavy_atoms = config['agent']['heavy_atoms']
+        sigma = config['agent']['sigma']
+        
+        if reward_type == "kabsch":
+            log_target_reward = torch.zeros(
+                num_samples, num_steps, device=device
+            )
+            for i in range(num_samples):
+                aligned_target_position = kabsch(self.target_position, positions[i][1:])
+                target_velocity = (
+                    aligned_target_position - positions[i][:-1]
+                ) / config['']
+                log_target_reward[i] = -0.5 * torch.square(
+                    (target_velocity - velocities[i][1:]) / sigma
+                ).mean((1, 2))
+        elif reward_type == "dist":
+            target_pd = pairwise_dist(self.target_position)
+
+            log_target_reward = torch.zeros(
+                num_samples, num_steps + 1, device=device
+            )
+            for i in range(num_samples):
+                pd = pairwise_dist(positions[i])
+                log_target_reward[i] = -0.5 * torch.square(
+                    (pd - target_pd) / sigma
+                ).mean((1, 2))
+        elif reward_type == "s_dist":
+            log_target_reward = torch.zeros(
+                num_samples, num_steps + 1, device=device
+            )
+            for i in range(num_samples):
+                if heavy_atoms:
+                    log_target_reward[i] = -(
+                        compute_s_dist(
+                            positions[i][:, self.heavy_atom_ids],
+                            self.target_position[:, self.heavy_atom_ids],
+                        )
+                        / sigma
+                    )
+                else:
+                    log_target_reward[i] = -(
+                        compute_s_dist(positions[i], self.target_position) / sigma
+                    )
+        
+        return log_target_reward
+                    
+    def train(self, config):
         optimizer = torch.optim.Adam(
             [
-                {"params": [self.policy.log_z], "lr": args.log_z_lr},
-                {"params": self.policy.mlp.parameters(), "lr": args.policy_lr},
+                {"params": [self.policy.log_z], "lr": float(config['training']['log_z_lr'])},
+                {"params": self.policy.mlp.parameters(), "lr": float(config['training']['policy_lr'])},
             ]
         )
 
         indices, positions, actions, log_reward = self.replay.sample()
 
-        biases = args.bias_scale * self.policy(positions, self.target_position)
+        biases = self.bias_scale * self.policy(positions, self.target_position)
         biases = 1e-6 * biases[:, :-1]  # kJ/(mol*nm) -> (da*nm)/fs**2
-        means = self.a * args.timestep * -biases / self.m
+        means = self.a * config['dynamics']['timestep'] * -biases / self.m
 
         log_z = self.policy.log_z
         log_forward = self.normal.log_prob(actions - means).mean((1, 2, 3))
         tb_error = log_z + log_forward - log_reward
-        loss = tb_error.square().mean() * args.scale
+        loss = tb_error.square().mean() * self.scale
 
         loss.backward()
 
         for group in optimizer.param_groups:
-            torch.nn.utils.clip_grad_norm_(group["params"], args.max_grad_norm)
+            torch.nn.utils.clip_grad_norm_(group["params"], self.max_grad_norm)
 
         optimizer.step()
         optimizer.zero_grad()
 
-        if args.buffer == "prioritized":
+        if config['agent']['buffer']['prioritized']:
             self.replay.update_priorities(indices, tb_error.abs().detach())
         return loss.item()
 
 
 class ReplayBuffer:
-    def __init__(self, args, md):
+    def __init__(self, config, md):
+        device = config['system']['device']
+        self.idx = 0
+        self.prioritized_exp = config['agent']['buffer']['prioritized_exp']
+        self.buffer = config['agent']['buffer']['prioritized']
+        self.buffer_size = config['agent']['buffer']['buffer_size']
+        self.num_steps = config['agent']['num_steps']
+        self.num_samples = config['agent']['num_samples']
+        self.batch_size = config['training']['batch_size']
+        
         self.positions = torch.zeros(
-            (args.buffer_size, args.num_steps + 1, md.num_particles, 3),
-            device=args.device,
+            (self.buffer_size, self.num_steps + 1, md.num_particles, 3),
+            device=device,
         )
         self.actions = torch.zeros(
-            (args.buffer_size, args.num_steps, md.num_particles, 3), device=args.device
+            (self.buffer_size, self.num_steps, md.num_particles, 3), device=device
         )
-        self.log_reward = torch.zeros(args.buffer_size, device=args.device)
-        self.priorities = torch.ones(args.buffer_size, device=args.device)
-
-        self.idx = 0
-        self.prioritized_exp = args.prioritized_exp
-        self.buffer = args.buffer
-        self.buffer_size = args.buffer_size
-        self.num_samples = args.num_samples
-        self.batch_size = args.batch_size
+        self.log_reward = torch.zeros(self.buffer_size, device=device)
+        self.priorities = torch.ones(self.buffer_size, device=device)
 
     def add(self, data):
         indices = torch.arange(self.idx, self.idx + self.num_samples) % self.buffer_size
